@@ -1,3 +1,3 @@
 # TrackingGame
 
-![](https://i.imgur.com/wJO7aCD.gif)
+![alt text](https://github.com/Skylerly/TrackingGame/blob/master/Webp.net-gifmaker.gif)
