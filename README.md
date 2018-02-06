@@ -9,7 +9,7 @@ Features are extracted from your object and matched to every frame to find your 
 
 ![Matching Demo](https://github.com/Skylerly/TrackingGame/blob/master/Demos/Matching.gif)
 
-Example of the object tracker
+Then we compute the homography to localize your controller.
 
 ![Tracking Demo](https://github.com/Skylerly/TrackingGame/blob/master/Demos/TrackingDemo.gif)
 
