@@ -46,13 +46,17 @@ class projectile:
 class Enemy:
     def __init__(self, location = (200,200), mode = 'e'):
         sizes = {'e' : (50,50), 'm' : (35,35), 'h' : (20,20)}
+        self.speed_modifier = {'e' : 1, 'm' : 3, 'h' : 5}
         shield = {1: (0,0,255), 2 : (0,165,255), 3 : (0,255,0)}
         self.loc = np.array([location])
         self.mode = mode;
         self.mode_set = False
         self.size = sizes[mode]
-        self.dir = np.array((random.randint(-5,5), random.randint(-5,5)))
+        self.dir = np.array((random.randint(-5,5), random.randint(-5,5))) * self.speed_modifier[self.mode]
         self.health = 3
+    def initialize(self):
+        self.dir = np.array((random.randint(-5,5), random.randint(-5,5))) * self.speed_modifier[self.mode]
+        
     def move(self):
         if(self.loc[0][1] < 480 and self.loc[0][1] > 0 and self.loc[0][0] < 640 and self.loc[0][0] > 0):
             self.loc[0][0] += self.dir[0]
@@ -60,7 +64,9 @@ class Enemy:
             
         else:
             self.loc[0] = (random.randint(0,640-1), random.randint(0,480-1))
-            self.dir = np.array((random.randint(-5,5), random.randint(-5,5)))
+            self.dir = np.array((random.randint(-5,5), random.randint(-5,5))) * self.speed_modifier[self.mode]
+            while ( self.dir[0] == 0 and self.dir[1] == 0):
+                self.dir = np.array((random.randint(-5,5), random.randint(-5,5))) * self.speed_modifier[self.mode]
             
     def draw(self, frame):
         sizes = {'e' : (50,50), 'm' : (35,35), 'h' : (20,20)}
@@ -93,7 +99,7 @@ cap = cv2.VideoCapture(0)
 win_size = 3
 MIN_MATCH_COUNT = 40
 shooter = projectile()
-a = obj()
+controller = obj()
 Enemy = Enemy()
 orb = cv2.ORB_create(nfeatures = 10000,scaleFactor = 1.1, nlevels = 8, edgeThreshold = 50, patchSize=40)
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
@@ -118,9 +124,9 @@ while(ret):
             cv2.imshow("frame" , cv2.resize(frame, (win_size * frame.shape[1], win_size * frame.shape[0])))
             x=cv2.waitKey(1)
             Enemy.setMode(x)
-           
+            Enemy.initialize()
             frame_count +=1
-    if not a.aquired:
+    if not controller.aquired:
         # Draw some arrows to guide user...
         cv2.arrowedLine(frame, (frame.shape[1],frame.shape[0]), (int(0.8 * frame.shape[1]), int(0.8 * frame.shape[0])), (248,150, 75), 3)
         cv2.arrowedLine(frame, (0,0), (int(0.2 * frame.shape[1]), int(0.2 * frame.shape[0])), (248,150, 75), 3)
@@ -137,9 +143,9 @@ while(ret):
     if k == 103:
         #cv2.destroyWindow('frame')
         count = 0
-        a.frame = frame_cpy[int(0.2*frame.shape[0]): int(0.8 * frame.shape[0]), int(0.2*frame.shape[1]) : int(0.8 * frame.shape[1]), :]
-        a.get_features()
-    if(a.aquired):
+        controller.frame = frame_cpy[int(0.2*frame.shape[0]): int(0.8 * frame.shape[0]), int(0.2*frame.shape[1]) : int(0.8 * frame.shape[1]), :]
+        controller.get_features()
+    if(controller.aquired):
         
         
         if(Enemy.health > 0):
@@ -147,18 +153,18 @@ while(ret):
             
             # Check if any keypoints are detected in the current frame...if not we can't do any matching
             if kp:
-                matches = bf.match(a.features, feats)
+                matches = bf.match(controller.features, feats)
                 good = [elem for elem in matches if elem.distance < 40]
                 
                 ####### ~~~ homography  ~~~~ #######
                 if len(good)>MIN_MATCH_COUNT and kp:
-                    src_pts = np.float32([ a.points[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+                    src_pts = np.float32([ controller.points[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
                     dst_pts = np.float32([ kp[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
                 
                     M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
                     matchesMask = mask.ravel().tolist() 
                 
-                    h,w,_ = a.frame.shape
+                    h,w,_ = controller.frame.shape
                     pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
                     dst = cv2.perspectiveTransform(pts,M)
                     brect = cv2.minAreaRect(dst)
@@ -174,9 +180,10 @@ while(ret):
                     cv2.circle(frame, center, 4, (0,0,255),-1)
                     cv2.putText(frame, 'Shoot this box ' + str(Enemy.health) + ' more times to win!', (Enemy.loc[0][0]-50, Enemy.loc[0][1]-50),cv2.FONT_HERSHEY_TRIPLEX, 0.5, shield[Enemy.health] )
                     cv2.arrowedLine(frame, (Enemy.loc[0][0]-50, Enemy.loc[0][1]-50), (Enemy.loc[0][0], Enemy.loc[0][1]), shield[Enemy.health])
-                    #cv2.circle(frame, (int(center[0]), int(center[1])), int(radius), (255,0,0), 2)
-                    #cv2.drawContours(frame,[box],0,(0,0,255),health) 
-                    #frame = cv2.polylines(frame,[np.int32(dst)],True,shield[health],3, cv2.LINE_AA)
+                    
+#                    cv2.circle(frame, (int(center[0]), int(center[1])), int(radius), (255,0,0), 2)
+#                    cv2.drawContours(frame,[box],0,(0,0,255),Enemy.health) 
+#                    frame = cv2.polylines(frame,[np.int32(dst)],True,Enemy.health,3, cv2.LINE_AA)
                     
                     if k != 255 and k!= 103: # as long as 'G' or 'NULL' are not entered, shoot projectile
                         shooter.new_proj([center[0], center[1]], k)
@@ -195,12 +202,12 @@ while(ret):
                     Enemy.move()
                 
                 
-                img3 = cv2.drawMatches(a.frame, [],frame,[], [], None, flags=2)
+                img3 = cv2.drawMatches(controller.frame, [],frame,[], [], None, flags=2)
                 cv2.imshow('frame', cv2.resize(frame, (win_size*frame.shape[1], win_size*frame.shape[0])))   
                 
             else:
                 print('not enough kp')
-                img3 = cv2.drawMatches(a.frame, [],frame,[], [], None, flags=2)
+                img3 = cv2.drawMatches(controller.frame, [],frame,[], [], None, flags=2)
                 cv2.imshow('frame', cv2.resize(frame, (win_size*frame.shape[1], win_size*img3.shape[0])))
                 
                 frame_count +=1
