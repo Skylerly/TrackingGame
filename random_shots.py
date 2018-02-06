@@ -55,7 +55,8 @@ class Enemy:
         self.dir = np.array((random.randint(-5,5), random.randint(-5,5))) * self.speed_modifier[self.mode]
         self.health = 3
     def initialize(self):
-        self.dir = np.array((random.randint(-5,5), random.randint(-5,5))) * self.speed_modifier[self.mode]
+        while(self.dir[0] == 0 and self.dir[1] == 0):
+            self.dir = np.array((random.randint(-5,5), random.randint(-5,5))) * self.speed_modifier[self.mode]
         
     def move(self):
         if(self.loc[0][1] < 480 and self.loc[0][1] > 0 and self.loc[0][0] < 640 and self.loc[0][0] > 0):
@@ -96,6 +97,7 @@ except:
     
 cap = cv2.VideoCapture(0)
 
+DRAW_MATCHES = False
 win_size = 3
 MIN_MATCH_COUNT = 40
 shooter = projectile()
@@ -200,14 +202,14 @@ while(ret):
                             circ[1] = 1000
                     
                     Enemy.move()
-                
-                
-                img3 = cv2.drawMatches(controller.frame, [],frame,[], [], None, flags=2)
-                cv2.imshow('frame', cv2.resize(frame, (win_size*frame.shape[1], win_size*frame.shape[0])))   
-                
+                cv2.imshow('frame', cv2.resize(frame, (win_size*frame.shape[1], win_size*frame.shape[0]))) 
+                if DRAW_MATCHES:
+                    img3 = cv2.drawMatches(controller.frame, controller.points,frame,kp, matches, None, flags=2)
+                    cv2.imshow('matches',cv2.resize(img3, (win_size*frame.shape[1], win_size*frame.shape[0])))
+
             else:
                 print('not enough kp')
-                img3 = cv2.drawMatches(controller.frame, [],frame,[], [], None, flags=2)
+                #img3 = cv2.drawMatches(controller.frame, [],frame,[], [], None, flags=2)
                 cv2.imshow('frame', cv2.resize(frame, (win_size*frame.shape[1], win_size*img3.shape[0])))
                 
                 frame_count +=1
